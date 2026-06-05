@@ -10,18 +10,14 @@
 body{width:100vw;height:100vh;overflow:hidden;cursor:pointer;background:#fff;font-family:'Nunito',sans-serif;display:flex;align-items:center;justify-content:center;transition:background 1.5s ease}
 body.active{background:linear-gradient(135deg,#0a1628 0%,#0d2137 40%,#1a3a5c 70%,#2563eb 100%)}
 .container{text-align:center;position:relative;z-index:2}
-h1{font-size:3.5rem;font-weight:700;color:#222;transition:all 1.2s cubic-bezier(.4,0,.2,1);letter-spacing:0}
-body.active h1{color:#fff;font-family:'Playfair Display',serif;font-size:4.5rem;letter-spacing:2px;text-shadow:0 0 40px rgba(37,99,235,0.5),0 0 80px rgba(37,99,235,0.2)}
-.guess{display:inline;transition:opacity 0.8s ease,margin 0.8s ease}
-body.active .guess{opacity:0;margin:0;width:0;overflow:hidden}
-.period{transition:opacity 0.4s ease}
-body.active .period{opacity:0}
-.exclaim{opacity:0;display:inline;transition:opacity 0.6s ease 0.6s}
-body.active .exclaim{opacity:1;animation:bounce 0.5s ease 1.4s}
+h1{font-size:3.5rem;font-weight:700;color:#222;transition:all 1.2s cubic-bezier(.4,0,.2,1);letter-spacing:0;animation:wobble 4s ease-in-out infinite}
+body.active h1{color:#fff;font-family:'Playfair Display',serif;font-size:4.5rem;letter-spacing:2px;text-shadow:0 0 40px rgba(37,99,235,0.5),0 0 80px rgba(37,99,235,0.2);animation:none}
+.text-casual{transition:opacity 0.8s ease}
+body.active .text-casual{opacity:0;position:absolute;left:-9999px}
+.text-pro{opacity:0;position:absolute;left:-9999px;transition:opacity 0.6s ease 0.6s}
+body.active .text-pro{opacity:1;position:relative;left:auto;animation:bounce 0.5s ease 1.4s}
 @keyframes bounce{0%{transform:scale(1)}30%{transform:scale(1.4)}60%{transform:scale(0.9)}100%{transform:scale(1)}}
 @keyframes wobble{0%,100%{transform:translateY(0) rotate(0deg)}25%{transform:translateY(-6px) rotate(-1deg)}75%{transform:translateY(4px) rotate(0.5deg)}}
-h1{animation:wobble 4s ease-in-out infinite}
-body.active h1{animation:none}
 .hint{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);color:#aaa;font-size:0.95rem;transition:opacity 1s ease;animation:pulse 2s ease-in-out infinite}
 body.active .hint{opacity:0}
 @keyframes pulse{0%,100%{opacity:0.4}50%{opacity:0.8}}
@@ -44,7 +40,10 @@ body.active .shape{opacity:1}
 <div class="shape s3"></div>
 <canvas id="sparkles"></canvas>
 <div class="container">
-<h1>Hatcher is cool<span class="guess">, I guess</span><span class="period">.</span><span class="exclaim">!</span></h1>
+<h1>
+<span class="text-casual">Hatcher is cool, I guess.</span>
+<span class="text-pro">Hatcher is cool!</span>
+</h1>
 <p class="tagline">Transforming developer workflows</p>
 </div>
 <div class="hint">click anywhere</div>
