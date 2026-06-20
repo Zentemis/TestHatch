@@ -57,8 +57,9 @@ let particles = [];
 let dragging = null;
 let dragOffX = 0, dragOffY = 0;
 let activated = false;
-let lastMoveX = 0, lastMoveY = 0;
-let lastMoveTime = 0;
+let prevPointer = null;
+let prevTime = 0;
+let throwVx = 0, throwVy = 0;
 
 const COLORS = [
   '#f472b6', '#a78bfa', '#60a5fa', '#34d399', '#fbbf24',
@@ -213,9 +214,10 @@ function onDown(e) {
       dragging = b;
       dragOffX = dx;
       dragOffY = dy;
-      lastMoveX = p.x;
-      lastMoveY = p.y;
-      lastMoveTime = performance.now();
+      prevPointer = { x: p.x, y: p.y };
+      prevTime = performance.now();
+      throwVx = 0;
+      throwVy = 0;
       e.preventDefault();
       return;
     }
@@ -225,28 +227,26 @@ function onDown(e) {
 function onMove(e) {
   if (!dragging) return;
   const p = getPointer(e);
+  const now = performance.now();
+  const dt = Math.min((now - prevTime) / 1000, 0.1);
+  if (dt > 0.001) {
+    throwVx = (p.x - prevPointer.x) / dt;
+    throwVy = (p.y - prevPointer.y) / dt;
+  }
+  prevPointer = { x: p.x, y: p.y };
+  prevTime = now;
   dragging.x = p.x - dragOffX;
   dragging.y = p.y - dragOffY;
-  lastMoveX = p.x;
-  lastMoveY = p.y;
-  lastMoveTime = performance.now();
   e.preventDefault();
 }
 
 function onUp(e) {
   if (dragging) {
-    const dt = Math.min((performance.now() - lastMoveTime) / 1000, 0.2);
-    if (dt > 0.001) {
-      const dx = lastMoveX - (dragging.x + dragOffX);
-      const dy = lastMoveY - (dragging.y + dragOffY);
-      const speedMult = 3.0;
-      dragging.vx = (dx / dt) * speedMult;
-      dragging.vy = (dy / dt) * speedMult;
-    } else {
-      dragging.vx = 0;
-      dragging.vy = 0;
-    }
+    dragging.vx = throwVx * 2.5;
+    dragging.vy = throwVy * 2.5;
     dragging = null;
+    throwVx = 0;
+    throwVy = 0;
   }
 }
 
