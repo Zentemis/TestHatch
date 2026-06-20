@@ -232,29 +232,27 @@ document.addEventListener('keydown',function(e){
   ['left','right'].forEach(side=>{
     const half=document.createElement('div');
     half.className='half';
-
-    // Inner wrapper at 200% — shows the full-width scene, clipped to 50%
-    const inner=document.createElement('div');
-    inner.style.cssText='position:absolute;top:0;width:200%;height:100%;'+
-      (side==='left'?'left:0;clip-path:inset(0 50% 0 0);':'left:-100%;clip-path:inset(0 0 0 50%);');
+    half.style.overflow='hidden';
 
     const cv=document.createElement('canvas');
     cv.width=c.width;cv.height=c.height;
     const ctx=cv.getContext('2d');
     ctx.putImageData(imgData,0,0);
-    cv.style.cssText='position:absolute;top:0;left:0;width:50%;height:100%;z-index:2;';
+    // Canvas spans full viewport width, positioned so the correct half shows
+    cv.style.cssText='position:absolute;top:0;'+
+      (side==='left'?'left:0;':'left:-100%;')+
+      'width:200%;height:100%;z-index:2;';
 
+    // Text centered in the full viewport — the overflow:hidden on half clips it
     const t=txt.cloneNode(true);
-    t.style.cssText='position:absolute;top:50%;left:0;width:50%;text-align:center;z-index:1;pointer-events:none;transform:translateY(-50%);';
+    t.style.cssText='position:absolute;top:50%;left:0;width:200%;text-align:center;z-index:1;pointer-events:none;transform:translateY(-50%);';
 
     const h=hnt.cloneNode(true);
-    h.style.cssText='position:absolute;bottom:8%;left:0;width:50%;text-align:center;z-index:1;pointer-events:none;';
+    h.style.cssText='position:absolute;bottom:8%;left:0;width:200%;text-align:center;z-index:1;pointer-events:none;';
 
-    inner.appendChild(cv);
-    inner.appendChild(t);
-    inner.appendChild(h);
-
-    half.appendChild(inner);
+    half.appendChild(cv);
+    half.appendChild(t);
+    half.appendChild(h);
     half.style.background=isDark?'#2a2a2a':'#fff';
     overlay.appendChild(half);
   });
