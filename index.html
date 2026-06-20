@@ -9,56 +9,46 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0e27; font-family: 'Nunito', sans-serif; }
 
-/* AI site iframe — sits behind overlay, invisible until egg */
 #ai-frame {
   position: fixed; inset: 0; z-index: 0;
-  width: 100%; height: 100%;
-  border: none;
-  opacity: 0;
-  transition: opacity 0.8s ease 0.4s;
+  width: 100%; height: 100%; border: none;
+  opacity: 0; transition: opacity 0.8s ease 0.4s;
   pointer-events: none;
 }
-#ai-frame.visible { opacity: 1; pointer-events: auto; }
+#ai-frame.show { opacity: 1; pointer-events: auto; }
 
-/* The single overlay that completely covers the AI site */
 #overlay {
   position: fixed; inset: 0; z-index: 10;
-  background: #fff;
-  overflow: hidden;
+  background: #fff; overflow: hidden;
 }
 body.dark #overlay { background: #2a2a2a; }
 
-/* When split happens, the overlay gets two children clipped to each half */
-#overlay .split-half {
-  position: absolute;
-  top: 0;
-  width: 50%;
-  height: 100%;
-  transition: transform 1.2s cubic-bezier(0.77, 0, 0.18, 1);
+/* Split panels */
+body.split #overlay > .half {
+  position: absolute; top: 0;
+  width: 50%; height: 100%;
   overflow: hidden;
-  background: inherit;
+  transition: transform 1.2s cubic-bezier(0.77, 0, 0.18, 1);
 }
-#overlay .split-left  { left: 0; }
-#overlay .split-right { left: 50%; }
-body.split #overlay .split-left  { transform: translateX(-100%); }
-body.split #overlay .split-right { transform: translateX(100%); }
+body.split #overlay > .half.left  { left: 0; }
+body.split #overlay > .half.right { left: 50%; }
+body.split #overlay > .half.left  { transform: translateX(-100%); }
+body.split #overlay > .half.right { transform: translateX(100%); }
 body.split #overlay { pointer-events: none; }
 
-/* The canvas lives in the overlay directly */
 #overlay canvas {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   z-index: 2; pointer-events: none;
 }
-#overlay canvas.active { pointer-events: auto; }
+#overlay canvas.grab { pointer-events: auto; }
 
-/* Text centered in the overlay */
 #scene-text {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
   z-index: 1; text-align: center; pointer-events: none;
 }
-h1 { font-size: clamp(2rem, 6vw, 4.5rem); font-weight: 700; color: #222; display: inline-block; white-space: nowrap; transition: color 0.4s; }
+h1 { font-size: clamp(2rem, 6vw, 4.5rem); font-weight: 700; color: #222; display: inline-block; white-space: nowrap; }
 body.dark h1 { color: #fff; }
-#casual { animation: wobble 3s ease-in-out infinite; display: inline; }
+#casual { animation: wobble 3s ease-in-out infinite; }
 #pro { opacity: 0; display: none; }
 #pro .glow { text-shadow: 0 0 30px rgba(99,102,241,0.25); }
 .letter { display: inline-block; transition: opacity 0.3s; }
@@ -66,8 +56,9 @@ body.dark h1 { color: #fff; }
 
 #hint {
   position: absolute; bottom: 8%; left: 50%; transform: translateX(-50%);
-  z-index: 1; font-size: 0.9rem; color: #aaa;
-  animation: pulse 2s ease-in-out infinite; pointer-events: none; white-space: nowrap;
+  font-size: 0.9rem; color: #aaa; z-index: 1;
+  animation: pulse 2s ease-in-out infinite;
+  pointer-events: none; white-space: nowrap;
 }
 body.dark #hint { color: #666; }
 @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
@@ -81,7 +72,7 @@ body.dark #hint { color: #666; }
   transition: all 0.3s;
 }
 body.dark #darkBtn { background: #444; border-color: #666; color: #fff; }
-body.split #darkBtn { display: none; }
+body.split #darkBtn, body.split #egg-counter { display: none; }
 
 #egg-counter {
   position: fixed; top: 20px; left: 20px; z-index: 20;
@@ -92,23 +83,19 @@ body.split #darkBtn { display: none; }
   pointer-events: none; white-space: nowrap;
 }
 #egg-counter.show { opacity: 1; }
-body.split #egg-counter { display: none; }
 </style>
 </head>
 <body>
 
 <div id="egg-counter"></div>
-
 <button id="darkBtn" title="Toggle dark mode">
 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
 </button>
 
-<!-- AI site as iframe — renders properly with its own CSS/DOM -->
 <iframe id="ai-frame" src="ai-site/index.html"></iframe>
 
-<!-- Single overlay — gets split dynamically on egg trigger -->
 <div id="overlay">
-  <canvas id="canvas"></canvas>
+  <canvas id="c"></canvas>
   <div id="scene-text">
     <h1>
       <span id="casual">Hatcher is cool, <span id="iguess"><span class="letter">I</span> <span class="letter">g</span><span class="letter">u</span><span class="letter">e</span><span class="letter">s</span><span class="letter">s</span></span><span id="period">.</span></span>
@@ -119,56 +106,42 @@ body.split #egg-counter { display: none; }
 </div>
 
 <script>
-// ===== HATCHER PHYSICS (single canvas, single scene) =====
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-const hint = document.getElementById('hint');
-const casual = document.getElementById('casual');
-const pro = document.getElementById('pro');
-const iguess = document.getElementById('iguess');
-const period = document.getElementById('period');
-const darkBtn = document.getElementById('darkBtn');
+// === SETUP ===
+const c = document.getElementById('c'), cx = c.getContext('2d');
+const hint = document.getElementById('hint'), casual = document.getElementById('casual');
+const pro = document.getElementById('pro'), iguess = document.getElementById('iguess');
+const period = document.getElementById('period'), darkBtn = document.getElementById('darkBtn');
+const eggBadge = document.getElementById('egg-counter'), overlay = document.getElementById('overlay');
+const aiFrame = document.getElementById('ai-frame');
 
-let W, H, dpr;
-let particles = [];
-let dragging = null, dragOffX = 0, dragOffY = 0;
-let activated = false;
-let prevPointer = null, prevTime = 0, throwVx = 0, throwVy = 0;
+let W,H,dpr, pts=[], drag=null, offX=0, offY=0, act=false;
+let px=null, pt=0, tvx=0, tvy=0, aid=null;
+const COLS = ['#f472b6','#a78bfa','#60a5fa','#34d399','#fbbf24','#fb923c','#f87171','#c084fc','#22d3ee','#e879f9'];
 
-const COLORS = ['#f472b6','#a78bfa','#60a5fa','#34d399','#fbbf24','#fb923c','#f87171','#c084fc','#22d3ee','#e879f9'];
-
-function resize() {
-  dpr = window.devicePixelRatio || 1;
-  W = window.innerWidth; H = window.innerHeight;
-  canvas.width = W * dpr; canvas.height = H * dpr;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+function resize(){
+  dpr=window.devicePixelRatio||1; W=innerWidth; H=innerHeight;
+  c.width=W*dpr; c.height=H*dpr; cx.setTransform(dpr,0,0,dpr,0,0);
 }
-resize();
-window.addEventListener('resize', resize);
+resize(); addEventListener('resize',resize);
 
-class Ball {
-  constructor(x, y, vx, vy, r, color) {
-    this.x = x; this.y = y; this.vx = vx; this.vy = vy; this.r = r; this.color = color; this.grounded = false;
+// === BALL PHYSICS ===
+class Ball{
+  constructor(x,y,vx,vy,r,color){this.x=x;this.y=y;this.vx=vx;this.vy=vy;this.r=r;this.color=color;}
+  update(dt){
+    if(this===drag)return;
+    this.vy+=1200*dt; this.x+=this.vx*dt; this.y+=this.vy*dt; this.vx*=0.998;
+    if(this.y+this.r>H){this.y=H-this.r;this.vy*=-0.5;this.vx*=0.85;if(Math.abs(this.vy)<30)this.vy=0;}
+    if(this.y-this.r<0){this.y=this.r;this.vy*=-0.5;}
+    if(this.x-this.r<0){this.x=this.r;this.vx*=-0.7;}
+    if(this.x+this.r>W){this.x=W-this.r;this.vx*=-0.7;}
   }
-  update(dt) {
-    if (this === dragging) return;
-    this.vy += 1200 * dt;
-    this.x += this.vx * dt; this.y += this.vy * dt;
-    this.vx *= 0.998;
-    if (this.y+this.r>H) { this.y=H-this.r; this.vy*=-0.5; this.vx*=0.85; if(Math.abs(this.vy)<30)this.vy=0; }
-    if (this.y-this.r<0) { this.y=this.r; this.vy*=-0.5; }
-    if (this.x-this.r<0) { this.x=this.r; this.vx*=-0.7; }
-    if (this.x+this.r>W) { this.x=W-this.r; this.vx*=-0.7; }
-  }
-  draw() {
-    ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI*2); ctx.fillStyle=this.color; ctx.fill();
-    ctx.beginPath(); ctx.arc(this.x-this.r*0.25, this.y-this.r*0.25, this.r*0.35, 0, Math.PI*2); ctx.fillStyle='rgba(255,255,255,0.35)'; ctx.fill();
-  }
+  draw(){cx.beginPath();cx.arc(this.x,this.y,this.r,0,Math.PI*2);cx.fillStyle=this.color;cx.fill();
+    cx.beginPath();cx.arc(this.x-this.r*0.25,this.y-this.r*0.25,this.r*0.35,0,Math.PI*2);cx.fillStyle='rgba(255,255,255,0.35)';cx.fill();}
 }
 
-function collide() {
-  for(let i=0;i<particles.length;i++) for(let j=i+1;j<particles.length;j++) {
-    const a=particles[i],b=particles[j],dx=b.x-a.x,dy=b.y-a.y,d=Math.sqrt(dx*dx+dy*dy),md=a.r+b.r;
+function collide(){
+  for(let i=0;i<pts.length;i++) for(let j=i+1;j<pts.length;j++){
+    const a=pts[i],b=pts[j],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy),md=a.r+b.r;
     if(d<md&&d>0){const nx=dx/d,ny=dy/d,o=md-d;
       a.x-=nx*o*0.5;a.y-=ny*o*0.5;b.x+=nx*o*0.5;b.y+=ny*o*0.5;
       const rvx=a.vx-b.vx,rvy=a.vy-b.vy,dot=rvx*nx+rvy*ny;
@@ -177,129 +150,109 @@ function collide() {
   }
 }
 
-function burst(x,y,n){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=80+Math.random()*350;particles.push(new Ball(x,y,Math.cos(a)*s,Math.sin(a)*s-200,5+Math.random()*12,COLORS[Math.floor(Math.random()*COLORS.length)]));}}
+function burst(x,y,n){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=80+Math.random()*350;pts.push(new Ball(x,y,Math.cos(a)*s,Math.sin(a)*s-200,5+Math.random()*12,COLS[Math.floor(Math.random()*COLS.length)]));}}
 
 function activate(){
-  if(activated)return;activated=true;
+  if(act)return; act=true;
   hint.style.transition='opacity 0.5s';hint.style.opacity='0';setTimeout(()=>hint.style.display='none',500);
   const ls=iguess.querySelectorAll('.letter');let d=0;
   ls.forEach(el=>{setTimeout(()=>{const r=el.getBoundingClientRect();burst(r.left+r.width/2,r.top+r.height/2,5+Math.random()*4|0);el.style.opacity='0';},d);d+=100;});
   setTimeout(()=>{period.style.transition='opacity 0.3s';period.style.opacity='0';},d);
   setTimeout(()=>{casual.style.transition='opacity 0.4s';casual.style.opacity='0';
     setTimeout(()=>{casual.style.display='none';pro.style.display='inline';requestAnimationFrame(()=>{pro.style.transition='opacity 0.6s';pro.style.opacity='1';});},400);},d+200);
-  canvas.classList.add('active');
+  c.classList.add('grab');
 }
 
+// === POINTER ===
 function gp(e){return e.touches?{x:e.touches[0].clientX,y:e.touches[0].clientY}:{x:e.clientX,y:e.clientY};}
 
 function onDown(e){
-  if(!activated){activate();return;}const p=gp(e);
-  for(let i=particles.length-1;i>=0;i--){const b=particles[i],dx=p.x-b.x,dy=p.y-b.y;
-    if(dx*dx+dy*dy<b.r*b.r*2.5){dragging=b;dragOffX=dx;dragOffY=dy;prevPointer={x:p.x,y:p.y};prevTime=performance.now();throwVx=0;throwVy=0;e.preventDefault();return;}}
+  if(!act){activate();return;}const p=gp(e);
+  for(let i=pts.length-1;i>=0;i--){const b=pts[i],dx=p.x-b.x,dy=p.y-b.y;
+    if(dx*dx+dy*dy<b.r*b.r*2.5){drag=b;offX=dx;offY=dy;px={x:p.x,y:p.y};pt=performance.now();tvx=0;tvy=0;e.preventDefault();return;}}
 }
 function onMove(e){
-  if(!dragging)return;const p=gp(e),n=performance.now(),dt=Math.min((n-prevTime)/1000,0.1);
-  if(dt>0.001){throwVx=(p.x-prevPointer.x)/dt;throwVy=(p.y-prevPointer.y)/dt;}
-  prevPointer={x:p.x,y:p.y};prevTime=n;dragging.x=p.x-dragOffX;dragging.y=p.y-dragOffY;e.preventDefault();
+  if(!drag)return;const p=gp(e),n=performance.now(),dt=Math.min((n-pt)/1000,0.1);
+  if(dt>0.001){tvx=(p.x-px.x)/dt;tvy=(p.y-px.y)/dt;}
+  px={x:p.x,y:p.y};pt=n;drag.x=p.x-offX;drag.y=p.y-offY;e.preventDefault();
 }
-function onUp(e){if(dragging){dragging.vx=throwVx*0.25;dragging.vy=throwVy*0.25;dragging=null;throwVx=0;throwVy=0;}}
+function onUp(e){if(drag){drag.vx=tvx*0.25;drag.vy=tvy*0.25;drag=null;tvx=0;tvy=0;}}
 
-canvas.addEventListener('mousedown',onDown);
-canvas.addEventListener('mousemove',onMove);
-canvas.addEventListener('mouseup',onUp);
-canvas.addEventListener('touchstart',onDown,{passive:false});
-canvas.addEventListener('touchend',onUp);
+c.addEventListener('mousedown',onDown);
+c.addEventListener('mousemove',onMove);
+c.addEventListener('mouseup',onUp);
+c.addEventListener('touchstart',onDown,{passive:false});
+c.addEventListener('touchend',onUp);
 
-document.getElementById('overlay').addEventListener('click',e=>{if(!activated)activate();});
-
+// === LOOP ===
 let lt=performance.now();
-function loop(n){const dt=Math.min((n-lt)/1000,0.05);lt=n;
-  ctx.clearRect(0,0,W,H);for(const p of particles)p.update(dt);collide();for(const p of particles)p.draw();
-  animId = requestAnimationFrame(loop);
+function loop(n){
+  const dt=Math.min((n-lt)/1000,0.05);lt=n;
+  cx.clearRect(0,0,W,H);
+  for(const p of pts)p.update(dt);collide();
+  for(const p of pts)p.draw();
+  aid=requestAnimationFrame(loop);
 }
-animId = requestAnimationFrame(loop);
+aid=requestAnimationFrame(loop);
 
 darkBtn.addEventListener('click',e=>{e.stopPropagation();document.body.classList.toggle('dark');});
 
-// ===== EASTER EGG: click 5x then Shift+A =====
-let clickCount = 0;
-const eggBadge = document.getElementById('egg-counter');
+// === EASTER EGG ===
+let clickCount=0;
 
-document.addEventListener('click', () => {
-  if (document.body.classList.contains('split')) return;
+overlay.addEventListener('click',function(e){
+  if(document.body.classList.contains('split'))return;
   clickCount++;
-  eggBadge.textContent = clickCount + ' / 5';
+  if(!act)activate();
+  eggBadge.textContent=clickCount+' / 5';
   eggBadge.classList.add('show');
   clearTimeout(window._et);
-  if (clickCount < 5) {
-    window._et = setTimeout(() => eggBadge.classList.remove('show'), 1500);
-  } else {
-    eggBadge.textContent = '\u2713 5 / 5 \u2014 hold Shift + press A';
-    window._et = setTimeout(() => eggBadge.classList.remove('show'), 2500);
+  if(clickCount<5){
+    window._et=setTimeout(()=>eggBadge.classList.remove('show'),1500);
+  }else{
+    eggBadge.textContent='\u2713 5/5 \u2014 hold Shift + press A';
+    window._et=setTimeout(()=>eggBadge.classList.remove('show'),2500);
   }
-}, true);
+});
 
-document.addEventListener('keydown', function(e) {
-  if (clickCount < 5 || !e.shiftKey || (e.key !== 'a' && e.key !== 'A')) return;
+document.addEventListener('keydown',function(e){
+  if(clickCount<5||!e.shiftKey||(e.key!=='a'&&e.key!=='A'))return;
 
-  // Freeze the current canvas frame
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  // Freeze canvas
+  const imgData=cx.getImageData(0,0,c.width,c.height);
+  if(aid)cancelAnimationFrame(aid);
 
-  // Stop the animation loop
-  if (animId) cancelAnimationFrame(animId);
+  // Save text/hint nodes
+  const txt=document.getElementById('scene-text').cloneNode(true);
+  const hnt=document.getElementById('hint').cloneNode(true);
+  const isDark=document.body.classList.contains('dark');
 
-  // Split the overlay into two clipped halves
-  const overlay = document.getElementById('overlay');
-  const bodyRect = overlay.getBoundingClientRect();
-  const isDark = document.body.classList.contains('dark');
+  // Clear overlay and build halves
+  overlay.innerHTML='';
+  ['left','right'].forEach(side=>{
+    const half=document.createElement('div');
+    half.className='half';
 
-  // Capture DOM nodes before clearing
-  const textNode = document.getElementById('scene-text').cloneNode(true);
-  const hintNode = document.getElementById('hint').cloneNode(true);
+    const cv=document.createElement('canvas');
+    cv.width=c.width;cv.height=c.height;
+    const ctx=cv.getContext('2d');
+    ctx.putImageData(imgData,0,0);
+    cv.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;z-index:2;';
 
-  overlay.innerHTML = '';
+    const t=txt.cloneNode(true);
+    t.style.cssText='position:absolute;top:50%;left:0;width:100%;text-align:center;z-index:1;pointer-events:none;transform:translateY(-50%);';
 
-  // Create left and right halves
-  for (const side of ['left', 'right']) {
-    const half = document.createElement('div');
-    half.className = 'split-half split-' + side;
+    const h=hnt.cloneNode(true);
+    h.style.cssText='position:absolute;bottom:8%;left:0;width:100%;text-align:center;z-index:1;pointer-events:none;';
 
-    // Canvas with frozen pixels
-    const cv = document.createElement('canvas');
-    cv.width = canvas.width;
-    cv.height = canvas.height;
-    const cctx = cv.getContext('2d');
-    cctx.putImageData(imageData, 0, 0);
-    cv.style.cssText = 'position:absolute;top:0;width:100%;height:100%;z-index:2;pointer-events:none;';
-
-    // Text clone
-    const txt = textNode.cloneNode(true);
-    txt.style.cssText = 'position:absolute;top:50%;z-index:1;text-align:center;pointer-events:none;width:100%;';
-    // Fix left-alignment: the text was centered in viewport, now each half is 50% wide
-    txt.style.left = '0';
-
-    // Hint clone
-    const hnt = hintNode.cloneNode(true);
-    hnt.style.cssText = 'position:absolute;bottom:8%;z-index:1;pointer-events:none;white-space:nowrap;text-align:center;width:100%;left:0;';
-    hnt.style.animation = 'pulse 2s ease-in-out infinite';
-
-    // Wrap everything in a 200%-width inner div that gets clipped to 50%
-    const inner = document.createElement('div');
-    inner.style.cssText = 'position:absolute;top:0;width:200%;height:100%;' +
-      (side === 'left' ? 'left:0;clip-path:inset(0 50% 0 0);' : 'left:-100%;clip-path:inset(0 0 0 50%);');
-
-    inner.appendChild(cv);
-    inner.appendChild(txt);
-    inner.appendChild(hnt);
-
-    half.appendChild(inner);
-    half.style.background = isDark ? '#2a2a2a' : '#fff';
-
+    half.appendChild(cv);
+    half.appendChild(t);
+    half.appendChild(h);
+    half.style.background=isDark?'#2a2a2a':'#fff';
     overlay.appendChild(half);
-  }
+  });
 
-  // Show AI iframe
-  document.getElementById('ai-frame').classList.add('visible');
+  aiFrame.classList.add('show');
   document.body.classList.add('split');
 });
 </script>
