@@ -242,8 +242,8 @@ function onMove(e) {
 
 function onUp(e) {
   if (dragging) {
-    dragging.vx = throwVx * 2.5;
-    dragging.vy = throwVy * 2.5;
+    dragging.vx = throwVx * 0.25;
+    dragging.vy = throwVy * 0.25;
     dragging = null;
     throwVx = 0;
     throwVy = 0;
