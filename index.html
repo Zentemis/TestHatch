@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hatcher</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0e27; font-family: 'Nunito', sans-serif; }
+body.easter-egg { overflow-y: auto; }
+
+/* AI site behind the overlay */
+#ai-site {
+  position: fixed; inset: 0; z-index: 0;
+  overflow-y: auto; background: #06060a;
+  opacity: 0; transition: opacity 0.8s ease 0.4s;
+  pointer-events: none;
+}
+#ai-site.visible { opacity: 1; pointer-events: auto; }
+
+/* Hatcher overlay — splits into two panels via JS */
+#hatcher-wrap {
+  position: fixed; inset: 0; z-index: 10;
+  display: flex;
+  transition: none;
+}
+.hatch-half {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #fff;
+  transition: transform 1.2s cubic-bezier(0.77, 0, 0.18, 1);
+  transform: translateX(0);
+}
+body.dark .hatch-half { background: #2a2a2a; }
+
+body.easter-egg .hatch-half.left  { transform: translateX(-100%); }
+body.easter-egg .hatch-half.right { transform: translateX(100%); }
+body.easter-egg #hatcher-wrap { pointer-events: none; }
+
+/* Each half repeats the scene, clipped to its side */
+.half-scene {
+  position: absolute;
+  top: 0;
+  width: 200%;
+  height: 100%;
+}
+.hatch-half.left  .half-scene { left: 0; clip-path: inset(0 50% 0 0); }
+.hatch-half.right .half-scene { left: -100%; clip-path: inset(0 0 0 50%); }
+
+canvas {
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  display: block;
+}
+canvas.active { pointer-events: auto; }
+.hatch-half.right .half-scene canvas { left: 0; }
+
+.scene-text {
+  position: absolute;
+  top: 50%;
+  width: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  text-align: center;
+  pointer-events: none;
+}
+.hatch-half.left  .scene-text { left: 0; }
+.hatch-half.right .scene-text { left: 50%; }
+
+h1 { font-size: clamp(2rem, 6vw, 4.5rem); font-weight: 700; color: #222; display: inline-block; white-space: nowrap; transition: color 0.4s; }
+body.dark h1 { color: #fff; }
+.title-casual { animation: wobble 3s ease-in-out infinite; display: inline; }
+.title-pro { opacity: 0; letter-spacing: 0.04em; display: none; }
+.title-pro .glow { text-shadow: 0 0 30px rgba(99, 102, 241, 0.25); }
+
+.letter { display: inline-block; transition: opacity 0.3s; }
+
+@keyframes wobble { 0%, 100% { transform: translateY(0) rotate(0deg); } 25% { transform: translateY(-4px) rotate(-0.5deg); } 75% { transform: translateY(4px) rotate(0.5deg); } }
+
+.scene-hint {
+  position: absolute; bottom: 8%;
+  z-index: 1;
+  pointer-events: none;
+  white-space: nowrap;
+  animation: pulse 2s ease-in-out infinite;
+  font-size: 0.9rem;
+  color: #aaa;
+  width: 50%;
+  text-align: center;
+}
+body.dark .scene-hint { color: #666; }
+.hatch-half.left  .scene-hint { left: 0; }
+.hatch-half.right .scene-hint { left: 50%; }
+@keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+#darkBtn {
+  position: fixed; top: 20px; right: 20px; z-index: 20;
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 2px solid #ccc; background: #fff; color: #333;
+  font-size: 1.2rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.3s;
+}
+body.dark #darkBtn { background: #444; border-color: #666; color: #fff; }
+body.easter-egg #darkBtn { display: none; }
+
+#egg-counter {
+  position: fixed; top: 20px; left: 20px; z-index: 20;
+  background: rgba(0,0,0,0.65); color: #fff;
+  padding: 6px 14px; border-radius: 20px;
+  font-size: 0.8rem; font-family: 'Nunito', sans-serif;
+  opacity: 0; transition: opacity 0.3s;
+  pointer-events: none; white-space: nowrap;
+}
+#egg-counter.show { opacity: 1; }
+body.easter-egg #egg-counter { display: none; }
+</style>
+</head>
+<body>
+
+<div id="egg-counter"></div>
+
+<button id="darkBtn" title="Toggle dark mode">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+</button>
+
+<div id="ai-site"></div>
+
+<div id="hatcher-wrap">
+  <!-- LEFT HALF -->
+  <div class="hatch-half left">
+    <div class="half-scene">
+      <canvas></canvas>
+      <div class="scene-text">
+        <h1><span class="title-casual">Hatcher is cool, <span class="iguess"><span class="letter">I</span> <span class="letter">g</span><span class="letter">u</span><span class="letter">e</span><span class="letter">s</span><span class="letter">s</span></span><span class="period">.</span></span><span class="title-pro"><span class="glow">Hatcher is cool!</span></span></h1>
+      </div>
+    </div>
+    <div class="scene-hint">click anywhere</div>
+  </div>
+  <!-- RIGHT HALF -->
+  <div class="hatch-half right">
+    <div class="half-scene">
+      <canvas></canvas>
+      <div class="scene-text">
+        <h1><span class="title-casual">Hatcher is cool, <span class="iguess"><span class="letter">I</span> <span class="letter">g</span><span class="letter">u</span><span class="letter">e</span><span class="letter">s</span><span class="letter">s</span></span><span class="period">.</span></span><span class="title-pro"><span class="glow">Hatcher is cool!</span></span></h1>
+      </div>
+    </div>
+    <div class="scene-hint">click anywhere</div>
+  </div>
+</div>
+
+<script>
+// ===== EASTER EGG: click 5x then Shift+A =====
+let clickCount = 0;
+const eggBadge = document.getElementById('egg-counter');
+
+document.addEventListener('click', () => {
+  if (document.body.classList.contains('easter-egg')) return;
+  clickCount++;
+  eggBadge.textContent = clickCount + ' / 5';
+  eggBadge.classList.add('show');
+  clearTimeout(window._et);
+  if (clickCount < 5) {
+    window._et = setTimeout(() => eggBadge.classList.remove('show'), 1500);
+  } else {
+    eggBadge.textContent = '\u2713 5 / 5 \u2014 hold Shift + press A';
+    window._et = setTimeout(() => eggBadge.classList.remove('show'), 2500);
+  }
+}, true);
+
+document.addEventListener('keydown', function(e) {
+  if (clickCount >= 5 && e.shiftKey && (e.key === 'a' || e.key === 'A')) {
+    document.body.classList.add('easter-egg');
+    const ai = document.getElementById('ai-site');
+    ai.classList.add('visible');
+    fetch('ai-site/index.html')
+      .then(r => r.text())
+      .then(html => {
+        ai.innerHTML = html;
+        ai.querySelectorAll('script').forEach(s => {
+          const ns = document.createElement('script');
+          Array.from(s.attributes).forEach(a => ns.setAttribute(a.name, a.value));
+          ns.textContent = s.textContent;
+          s.parentNode.replaceChild(ns, s);
+        });
+      })
+      .catch(() => { ai.innerHTML = '<iframe src="ai-site/index.html" style="width:100%;height:100%;border:none;"></iframe>'; });
+  }
+});
+
+// ===== HATCHER PHYSICS =====
+const canvases = document.querySelectorAll('.hatch-half canvas');
+const ctxL = canvases[0].getContext('2d');
+const ctxR = canvases[1].getContext('2d');
+
+let W, H, dpr;
+let particles = [];
+let dragging = null, dragOffX = 0, dragOffY = 0;
+let activated = false;
+let prevPointer = null, prevTime = 0, throwVx = 0, throwVy = 0;
+
+const COLORS = ['#f472b6','#a78bfa','#60a5fa','#34d399','#fbbf24','#fb923c','#f87171','#c084fc','#22d3ee','#e879f9'];
+
+function resize() {
+  dpr = window.devicePixelRatio || 1;
+  W = window.innerWidth; H = window.innerHeight;
+  const hw = Math.ceil(W * 0.5);
+  canvases.forEach(c => { c.width = hw * dpr; c.height = H * dpr; });
+  ctxL.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctxR.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+resize();
+window.addEventListener('resize', resize);
+
+// Sync dark mode for right half (body class covers it via CSS)
+
+class Ball {
+  constructor(x, y, vx, vy, r, color) {
+    this.x = x; this.y = y; this.vx = vx; this.vy = vy; this.r = r; this.color = color; this.grounded = false;
+  }
+  update(dt) {
+    if (this === dragging) return;
+    this.vy += 1200 * dt;
+    this.x += this.vx * dt; this.y += this.vy * dt;
+    this.vx *= 0.998;
+    if (this.y + this.r > H) { this.y = H - this.r; this.vy *= -0.5; this.vx *= 0.85; if (Math.abs(this.vy) < 30) this.vy = 0; }
+    if (this.y - this.r < 0) { this.y = this.r; this.vy *= -0.5; }
+    if (this.x - this.r < 0) { this.x = this.r; this.vx *= -0.7; }
+    if (this.x + this.r > W) { this.x = W - this.r; this.vx *= -0.7; }
+  }
+  draw(ctx, ox) {
+    ctx.beginPath(); ctx.arc(this.x - ox, this.y, this.r, 0, Math.PI*2); ctx.fillStyle = this.color; ctx.fill();
+    ctx.beginPath(); ctx.arc(this.x - ox - this.r*0.25, this.y - this.r*0.25, this.r*0.35, 0, Math.PI*2); ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fill();
+  }
+}
+
+function collideBalls() {
+  for (let i = 0; i < particles.length; i++)
+    for (let j = i+1; j < particles.length; j++) {
+      const a=particles[i],b=particles[j],dx=b.x-a.x,dy=b.y-a.y,d=Math.sqrt(dx*dx+dy*dy),md=a.r+b.r;
+      if (d<md&&d>0) {
+        const nx=dx/d,ny=dy/d,o=md-d;
+        a.x-=nx*o*0.5;a.y-=ny*o*0.5;b.x+=nx*o*0.5;b.y+=ny*o*0.5;
+        const rvx=a.vx-b.vx,rvy=a.vy-b.vy,dot=rvx*nx+rvy*ny;
+        if(dot>0){a.vx-=dot*nx*0.5;a.vy-=dot*ny*0.5;b.vx+=dot*nx*0.5;b.vy+=dot*ny*0.5;}
+      }
+    }
+}
+
+function spawnBurst(x, y, n) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random()*Math.PI*2, s = 80+Math.random()*350;
+    particles.push(new Ball(x, y, Math.cos(a)*s, Math.sin(a)*s-200, 5+Math.random()*12, COLORS[Math.floor(Math.random()*COLORS.length)]));
+  }
+}
+
+function activate() {
+  if (activated) return;
+  activated = true;
+  document.querySelectorAll('.scene-hint').forEach(h => {
+    h.style.transition = 'opacity 0.5s'; h.style.opacity = '0';
+    setTimeout(() => h.style.display = 'none', 500);
+  });
+  document.querySelectorAll('.iguess').forEach(iguess => {
+    const letters = iguess.querySelectorAll('.letter');
+    let delay = 0;
+    letters.forEach(el => {
+      setTimeout(() => {
+        const r = el.getBoundingClientRect();
+        spawnBurst(r.left + r.width/2, r.top + r.height/2, 5+Math.random()*4|0);
+        el.style.opacity = '0';
+      }, delay);
+      delay += 100;
+    });
+    const half = iguess.closest('.hatch-half');
+    setTimeout(() => {
+      const p = half.querySelector('.period');
+      if (p) { p.style.transition = 'opacity 0.3s'; p.style.opacity = '0'; }
+    }, delay);
+    setTimeout(() => {
+      const c = half.querySelector('.title-casual');
+      const pro = half.querySelector('.title-pro');
+      if (c) { c.style.transition = 'opacity 0.4s'; c.style.opacity = '0'; }
+      setTimeout(() => {
+        if (c) c.style.display = 'none';
+        if (pro) { pro.style.display = 'inline'; requestAnimationFrame(() => { pro.style.transition = 'opacity 0.6s'; pro.style.opacity = '1'; }); }
+      }, 400);
+    }, delay + 200);
+  });
+  canvases.forEach(c => c.classList.add('active'));
+}
+
+function getPointer(e) {
+  return e.touches ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : { x: e.clientX, y: e.clientY };
+}
+
+function onDown(e) {
+  if (!activated) { activate(); return; }
+  const p = getPointer(e);
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const b = particles[i], dx = p.x - b.x, dy = p.y - b.y;
+    if (dx*dx+dy*dy < b.r*b.r*2.5) {
+      dragging = b; dragOffX = dx; dragOffY = dy;
+      prevPointer = { x: p.x, y: p.y }; prevTime = performance.now();
+      throwVx = 0; throwVy = 0; e.preventDefault(); return;
+    }
+  }
+}
+
+function onMove(e) {
+  if (!dragging) return;
+  const p = getPointer(e), now = performance.now(), dt = Math.min((now-prevTime)/1000, 0.1);
+  if (dt > 0.001) { throwVx = (p.x-prevPointer.x)/dt; throwVy = (p.y-prevPointer.y)/dt; }
+  prevPointer = { x: p.x, y: p.y }; prevTime = now;
+  dragging.x = p.x - dragOffX; dragging.y = p.y - dragOffY;
+  e.preventDefault();
+}
+
+function onUp(e) {
+  if (dragging) { dragging.vx = throwVx*0.25; dragging.vy = throwVy*0.25; dragging = null; throwVx = 0; throwVy = 0; }
+}
+
+canvases.forEach(c => {
+  c.addEventListener('mousedown', onDown);
+  c.addEventListener('mousemove', onMove);
+  c.addEventListener('mouseup', onUp);
+  c.addEventListener('touchstart', onDown, { passive: false });
+  c.addEventListener('touchend', onUp);
+});
+
+document.getElementById('hatcher-wrap').addEventListener('click', e => { if (!activated) activate(); });
+
+const hw = () => W * 0.5;
+let lt = performance.now();
+function loop(now) {
+  const dt = Math.min((now-lt)/1000, 0.05); lt = now;
+  ctxL.clearRect(0, 0, canvases[0].width/dpr, H);
+  ctxR.clearRect(0, 0, canvases[1].width/dpr, H);
+  for (const p of particles) p.update(dt);
+  collideBalls();
+  const hwv = hw();
+  for (const p of particles) {
+    if (p.x <= W) {
+      if (p.x < hwv + p.r) p.draw(ctxL, 0);
+      if (p.x > hwv - p.r) p.draw(ctxR, hwv);
+    }
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// Dark mode sync
+document.getElementById('darkBtn').addEventListener('click', e => {
+  e.stopPropagation();
+  document.body.classList.toggle('dark');
+});
+</script>
+</body>
+</html>
